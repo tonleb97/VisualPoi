@@ -87,7 +87,6 @@ BLEUart bleuart;
 
 uint32_t color = 0xFF0000;      // 'On' color (starts red)
 
-
 // Function prototypes for packetparser.cpp
 uint8_t readPacket (BLEUart *ble_uart, uint16_t timeout);
 float   parsefloat (uint8_t *buffer);
@@ -95,6 +94,9 @@ void    printHex   (const uint8_t * data, const uint32_t numBytes);
 
 // Packet buffer
 extern uint8_t packetbuffer[];
+
+//Button press (from BLE)
+uint8_t button;
 
 void     imageInit(void);
          //IRinterrupt(void);
@@ -115,10 +117,9 @@ void setup() {
 
   // Set up and start advertising
   startAdv();
-
-  Serial.println(F("Please use Adafruit Bluefruit LE app to connect in Controller mode"));
-  Serial.println(F("Then activate/use the sensors, color picker, game controller, etc!"));
-  Serial.println();  
+  
+  button = 0; //initialize button press to 0
+  
 }
 
 void startAdv(void)
@@ -208,150 +209,142 @@ void loop() {
   uint32_t t = millis(); // Current time, milliseconds
   
   measuredvbat = analogRead(VBATPIN);
-  Serial.println(measuredvbat);
   measuredvbat *= 2;    // we divided by 2, so multiply back
   measuredvbat *= 3600;  // Multiply by 3.6V, our reference voltage
   measuredvbat /= 1024; // convert to millivolts
-  //Serial.println(measuredvbat);
-  if(measuredvbat > BATT_MIN_MV){
+  if(measuredvbat > BATT_MIN_MV){ //If battery is above threshold, then I'm willing to display colors
 
-  if(autoCycle) {
-    if((t - lastImageTime) >= (CYCLE_TIME * 1000L)) nextImage();
+    if(autoCycle) {
+      if((t - lastImageTime) >= (CYCLE_TIME * 1000L)) nextImage();
     // CPU clocks vary slightly; multiple poi won't stay in perfect sync.
     // Keep this in mind when using auto-cycle mode, you may want to cull
     // the image selection to avoid unintentional regrettable combinations.
-  }
+    }
 
-  // Transfer one scanline from pixel data to LED strip:
-  uint8_t len = readPacket(&bleuart, 50);
-  if (len == 0) return;
-  if (packetbuffer[1] == 'C') {
-    uint8_t red = packetbuffer[2];
-    uint8_t green = packetbuffer[3];
-    uint8_t blue = packetbuffer[4];
-    color = red << 16 | green << 8 | blue;
-    strip.setPixelColor(0, color); // 'On' pixel at head
-    strip.setPixelColor(16, 0);     // 'Off' pixel at tail
-  }
+    // Transfer one scanline from pixel data to LED strip:
+    
+    uint8_t len = readPacket(&bleuart, 1);
+    if (len > 0){ //If I've received a packet
+      if (packetbuffer[1] == 'B') { //If packet type is button press
+        uint8_t buttnum = packetbuffer[2] - '0';
+        boolean pressed = packetbuffer[3] - '0';
+        if (!pressed) {
+          button = buttnum; //on release change the button type
+        }
+      }
+    }
+    
+    switch(imageType) {
 
-else{
-  switch(imageType) {
+      case PALETTE1: { // 1-bit (2 color) palette-based image
+        uint8_t  pixelNum = 0, byteNum, bitNum, pixels, idx,
+                *ptr = (uint8_t *)&imagePixels[imageLine * NUM_LEDS / 8];
+        for(byteNum = NUM_LEDS/8; byteNum--; ) { // Always padded to next byte
+          pixels = *ptr++;                       // 8 pixels of data (pixel 0 = LSB)
+          for(bitNum = 8; bitNum--; pixels >>= 1) {
+            idx = pixels & 1; // Color table index for pixel (0 or 1)
+            strip.setPixelColor(pixelNum++,
+              palette[idx][0], palette[idx][1], palette[idx][2]);
+          }
+        }
+        break;
+      }
 
-    case PALETTE1: { // 1-bit (2 color) palette-based image
-      uint8_t  pixelNum = 0, byteNum, bitNum, pixels, idx,
-              *ptr = (uint8_t *)&imagePixels[imageLine * NUM_LEDS / 8];
-      for(byteNum = NUM_LEDS/8; byteNum--; ) { // Always padded to next byte
-        pixels = *ptr++;                       // 8 pixels of data (pixel 0 = LSB)
-        for(bitNum = 8; bitNum--; pixels >>= 1) {
-          idx = pixels & 1; // Color table index for pixel (0 or 1)
+      case PALETTE4: { // 4-bit (16 color) palette-based image
+        uint8_t  pixelNum, p1, p2,
+                *ptr = (uint8_t *)&imagePixels[imageLine * NUM_LEDS / 2];
+        for(pixelNum = 0; pixelNum < NUM_LEDS; ) {
+          p2  = *ptr++;  // Data for two pixels...
+          p1  = p2 >> 4; // Shift down 4 bits for first pixel
+          p2 &= 0x0F;    // Mask out low 4 bits for second pixel
           strip.setPixelColor(pixelNum++,
-            palette[idx][0], palette[idx][1], palette[idx][2]);
+            palette[p1][0], palette[p1][1], palette[p1][2]);
+          strip.setPixelColor(pixelNum++,
+            palette[p2][0], palette[p2][1], palette[p2][2]);
         }
+        break;
       }
-      break;
-    }
 
-    case PALETTE4: { // 4-bit (16 color) palette-based image
-      uint8_t  pixelNum, p1, p2,
-              *ptr = (uint8_t *)&imagePixels[imageLine * NUM_LEDS / 2];
-      for(pixelNum = 0; pixelNum < NUM_LEDS; ) {
-        p2  = *ptr++;  // Data for two pixels...
-        p1  = p2 >> 4; // Shift down 4 bits for first pixel
-        p2 &= 0x0F;    // Mask out low 4 bits for second pixel
-        strip.setPixelColor(pixelNum++,
-          palette[p1][0], palette[p1][1], palette[p1][2]);
-        strip.setPixelColor(pixelNum++,
-          palette[p2][0], palette[p2][1], palette[p2][2]);
-      }
-      break;
-    }
-
-    case PALETTE8: { // 8-bit (256 color) PROGMEM-palette-based image
-      uint16_t  o;
-      uint8_t   pixelNum,
-               *ptr = (uint8_t *)&imagePixels[imageLine * NUM_LEDS];
-      for(pixelNum = 0; pixelNum < NUM_LEDS; pixelNum++) {
-        o = *ptr++ * 3; // Offset into imagePalette
-        strip.setPixelColor(pixelNum,
-          imagePalette[o],
-          imagePalette[o + 1],
-          imagePalette[o + 2]);
-      }
-      break;
-    }
-
-    case TRUECOLOR: { // 24-bit ('truecolor') image (no palette)
-      uint8_t  pixelNum, r, g, b,
-              *ptr = (uint8_t *)&imagePixels[imageLine * NUM_LEDS * 3];
-      for(pixelNum = 0; pixelNum < NUM_LEDS; pixelNum++) {
-        r = *ptr++;
-        g = *ptr++;
-        b = *ptr++;
-        strip.setPixelColor(pixelNum, r, g, b);
-      }
-      break;
-    }
-  }
-  if(!strip.getBrightness()) { // If strip is off...
-        // Set brightness to last level
-        strip.setBrightness(brightness[bLevel]);
-        // and ignore button press (don't fall through)
-        // effectively, first press is 'wake'
-  }
-  if(++imageLine >= imageLines) imageLine = 0; // Next scanline, wrap around
-  /*
-  IRinterrupt();
-  while(((t = micros()) - lastLineTime) < lineInterval) {
-    if(results.value != BTN_NONE) {
-      if(!strip.getBrightness()) { // If strip is off...
-        // Set brightness to last level
-        strip.setBrightness(brightness[bLevel]);
-        // and ignore button press (don't fall through)
-        // effectively, first press is 'wake'
-      } else {
-        switch(results.value) {
-         case BTN_BRIGHT_UP:
-          if(bLevel < (sizeof(brightness) - 1))
-            strip.setBrightness(brightness[++bLevel]);
-          break;
-         case BTN_BRIGHT_DOWN:
-          if(bLevel)
-            strip.setBrightness(brightness[--bLevel]);
-          break;
-         case BTN_FASTER:
-          CYCLE_TIME++;
-          if(lineIntervalIndex < (sizeof(lineTable) / sizeof(lineTable[0]) - 1))
-           lineInterval = lineTable[++lineIntervalIndex];
-          break;
-         case BTN_SLOWER:
-         if(CYCLE_TIME > 0) CYCLE_TIME--;
-          if(lineIntervalIndex)
-           lineInterval = lineTable[--lineIntervalIndex];
-          break;
-         case BTN_RESTART:
-          imageNumber = 0;
-          imageInit();
-          break;
-         case BTN_OFF:
-          strip.setBrightness(0);
-          break;
-         case BTN_PATTERN_PREV:
-          prevImage();
-          break;
-         case BTN_PATTERN_NEXT:
-          nextImage();
-          break;
-         case BTN_AUTOPLAY:
-          autoCycle = !autoCycle;
-          break;
+      case PALETTE8: { // 8-bit (256 color) PROGMEM-palette-based image
+        uint16_t  o;
+        uint8_t   pixelNum,
+                *ptr = (uint8_t *)&imagePixels[imageLine * NUM_LEDS];
+        for(pixelNum = 0; pixelNum < NUM_LEDS; pixelNum++) {
+          o = *ptr++ * 3; // Offset into imagePalette
+          strip.setPixelColor(pixelNum,
+            imagePalette[o],
+            imagePalette[o + 1],
+            imagePalette[o + 2]);
         }
+        break;
       }
-      results.value = BTN_NONE;
+
+      case TRUECOLOR: { // 24-bit ('truecolor') image (no palette)
+        uint8_t  pixelNum, r, g, b,
+                *ptr = (uint8_t *)&imagePixels[imageLine * NUM_LEDS * 3];
+        for(pixelNum = 0; pixelNum < NUM_LEDS; pixelNum++) {
+          r = *ptr++;
+          g = *ptr++;
+          b = *ptr++;
+          strip.setPixelColor(pixelNum, r, g, b);
+        }
+        break;
+      }
     }
-  }
-  */
-  }//end else
-  strip.show(); // Refresh LEDs
+    
+    // if(!strip.getBrightness()) { // If strip is off...
+    //       // Set brightness to last level
+    //       strip.setBrightness(brightness[bLevel]);
+    //       // and ignore button press (don't fall through)
+    //       // effectively, first press is 'wake'
+    // }
+    if(++imageLine >= imageLines) imageLine = 0; // Next scanline, wrap around
+    while(((t = micros()) - lastLineTime) < lineInterval) {
+      if(button != 0) {
+        if(!strip.getBrightness()) { // If strip is off...
+          // Set brightness to last level
+          strip.setBrightness(brightness[bLevel]);
+          // and ignore button press (don't fall through)
+          // effectively, first press is 'wake'
+        } else {
+          switch(button) {
+          case 5:
+            if(bLevel < (sizeof(brightness) - 1))
+              strip.setBrightness(brightness[++bLevel]);
+            break;
+          case 6:
+            if(bLevel)
+              strip.setBrightness(brightness[--bLevel]);
+            break;
+          case 8:
+            CYCLE_TIME++;
+            if(lineIntervalIndex < (sizeof(lineTable) / sizeof(lineTable[0]) - 1))
+            lineInterval = lineTable[++lineIntervalIndex];
+            break;
+          case 7:
+          if(CYCLE_TIME > 0) CYCLE_TIME--;
+            if(lineIntervalIndex)
+            lineInterval = lineTable[--lineIntervalIndex];
+            break;
+          case 1:
+            imageNumber = 0;
+            imageInit();
+            break;
+          case 2:
+            prevImage();
+            break;
+          case 3:
+            nextImage();
+            break;
+          case 4:
+            autoCycle = !autoCycle;
+            break;
+          }
+        }
+        button = 0; //reset button press to 0
+      }
+    }
+    strip.show(); // Refresh LEDs
   }//end battery threshold if statement
   lastLineTime = t;
 }

@@ -120,7 +120,11 @@ uint8_t readPacket(BLEUart *ble_uart, uint16_t timeout)
     xsum += packetbuffer[i];
   }
   xsum = ~xsum;
-
+  /*
+  Serial.print("Checksum expected:");
+  Serial.println(xsum);
+  Serial.print("Checksum actual:");
+  Serial.println(checksum);
   // Throw an error message if the checksum's don't match
   if (xsum != checksum)
   {
@@ -128,7 +132,7 @@ uint8_t readPacket(BLEUart *ble_uart, uint16_t timeout)
     printHex(packetbuffer, replyidx+1);
     return 0;
   }
-  
+  */
   // checksum passed!
   return replyidx;
 }
