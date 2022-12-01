@@ -197,9 +197,108 @@ void loop()
         delay(2); // delay a bit for all characters to arrive
         
         char str[20+1] = { 0 };
+        int intstr = 0;
+        char sendstr[4+1] = {0};
         Serial.readBytes(str, 20);
-        Serial.println(str);
-        clientUart.print( str );
+        intstr = atoi(str);
+        Serial.println(intstr);
+        switch(intstr){
+        case 0:
+          strcpy(sendstr, "!B10");
+          break;
+        case 1:
+          strcpy(sendstr, "!B11");
+          break;
+        case 2:
+          strcpy(sendstr, "!B12");
+          break;
+        case 3:
+          strcpy(sendstr, "!B13");
+          break;
+        case 4:
+          strcpy(sendstr, "!B14");
+          break;
+        case 5:
+          strcpy(sendstr, "!B15");
+          break;
+        case 6:
+          strcpy(sendstr, "!B16");
+          break;
+        case 7:
+          strcpy(sendstr, "!B17");
+          break;
+        case 8:
+          strcpy(sendstr, "!B18");
+          break;
+        case 9:
+          strcpy(sendstr, "!B19");
+          break;
+        case 10:
+          strcpy(sendstr, "!B1A");
+          break;
+        case 11:
+          strcpy(sendstr, "!B1B");
+          break;
+        case 12:
+          strcpy(sendstr, "!B1C");
+          break;
+        case 13:
+          strcpy(sendstr, "!B1D");
+          break;
+        case 14:
+         strcpy(sendstr, "!B1E");
+         break;
+        case 15:
+          strcpy(sendstr, "!B1F");
+          break;
+        case 16:
+          strcpy(sendstr, "!B20");
+          break;
+        case 17:
+          strcpy(sendstr, "!B21");
+          break;
+        case 18:
+          strcpy(sendstr, "!B22");
+        case 19:
+          strcpy(sendstr, "!B23");
+        case 20:
+          strcpy(sendstr, "!B24");
+          break;
+        case 21:
+          strcpy(sendstr, "!B25");
+          break;
+        case 22:
+          strcpy(sendstr, "!B26");
+          break;
+        case 23:
+          strcpy(sendstr, "!B27");
+          break;
+        case 24:
+          strcpy(sendstr, "!B28");
+          break;
+        case 25:
+          strcpy(sendstr, "!B29");
+          break;
+        case 26:
+          strcpy(sendstr, "!B2A");
+          break;
+        case 27:
+          strcpy(sendstr, "!B2B");
+          break;
+        case 28:
+          strcpy(sendstr, "!B2C");
+          break;
+        case 29:
+          strcpy(sendstr, "!B2D");
+          break;
+        case 30:
+          strcpy(sendstr, "!B2E");
+          break;
+        case 31:
+          strcpy(sendstr, "!B2F");
+          break;
+        }
+        clientUart.print( sendstr );
       }
     }
   }

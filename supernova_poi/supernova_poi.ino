@@ -96,7 +96,8 @@ void    printHex   (const uint8_t * data, const uint32_t numBytes);
 extern uint8_t packetbuffer[];
 
 //Button press (from BLE)
-uint8_t button;
+uint8_t button1;
+uint8_t button2;
 
 void     imageInit(void);
          //IRinterrupt(void);
@@ -118,7 +119,8 @@ void setup() {
   // Set up and start advertising
   startAdv();
   
-  button = 0; //initialize button press to 0
+  button1 = 0; //initialize button press to 0
+  button2 = 0;
   
 }
 
@@ -226,11 +228,8 @@ void loop() {
     uint8_t len = readPacket(&bleuart, 1);
     if (len > 0){ //If I've received a packet
       if (packetbuffer[1] == 'B') { //If packet type is button press
-        uint8_t buttnum = packetbuffer[2] - '0';
-        boolean pressed = packetbuffer[3] - '0';
-        if (!pressed) {
-          button = buttnum; //on release change the button type
-        }
+        button1 = packetbuffer[2] - '0';
+        button2 = packetbuffer[3] - '0';
       }
     }
     
@@ -300,48 +299,152 @@ void loop() {
     // }
     if(++imageLine >= imageLines) imageLine = 0; // Next scanline, wrap around
     while(((t = micros()) - lastLineTime) < lineInterval) {
-      if(button != 0) {
+      if(button1 != 0) {
         if(!strip.getBrightness()) { // If strip is off...
           // Set brightness to last level
           strip.setBrightness(brightness[bLevel]);
           // and ignore button press (don't fall through)
           // effectively, first press is 'wake'
         } else {
-          switch(button) {
-          case 5:
-            if(bLevel < (sizeof(brightness) - 1))
-              strip.setBrightness(brightness[++bLevel]);
-            break;
-          case 6:
-            if(bLevel)
-              strip.setBrightness(brightness[--bLevel]);
-            break;
-          case 8:
-            CYCLE_TIME++;
-            if(lineIntervalIndex < (sizeof(lineTable) / sizeof(lineTable[0]) - 1))
-            lineInterval = lineTable[++lineIntervalIndex];
-            break;
-          case 7:
-          if(CYCLE_TIME > 0) CYCLE_TIME--;
-            if(lineIntervalIndex)
-            lineInterval = lineTable[--lineIntervalIndex];
-            break;
+          switch(button1) {
           case 1:
-            imageNumber = 0;
-            imageInit();
+            switch(button2) {
+              case 0:
+                autoCycle = !autoCycle;
+                break;
+              case 1:
+                if(bLevel < (sizeof(brightness) - 1))
+                strip.setBrightness(brightness[++bLevel]);
+                break;
+              case 2:
+                if(bLevel)
+                  strip.setBrightness(brightness[--bLevel]);
+                break;
+              case 3:
+                nextImage();
+                break;
+              case 4:
+                prevImage();
+                break;
+              case 5:
+                imageNumber = 0;
+                imageInit();
+                break;
+              case 6:
+                imageNumber = 1;
+                imageInit();
+                break;
+              case 7:
+                imageNumber = 2;
+                imageInit();
+                break;
+              case 8:
+                imageNumber = 3;
+                imageInit();
+                break;
+              case 9:
+                imageNumber = 4;
+                imageInit();
+                break;
+              case 10:
+                imageNumber = 5;
+                imageInit();
+                break;
+              case 11:
+                imageNumber = 6;
+                imageInit();
+                break;
+              case 12:
+                imageNumber = 7;
+                imageInit();
+                break;
+              case 13:
+                imageNumber = 8;
+                imageInit();
+                break;
+              case 14:
+                imageNumber = 9;
+                imageInit();
+                break;
+              case 15:
+                imageNumber = 10;
+                imageInit();
+                break;
+            }//end nested switch for button1 = 1
             break;
           case 2:
-            prevImage();
-            break;
-          case 3:
-            nextImage();
-            break;
-          case 4:
+            switch(button2){
+              case 0:
+                imageNumber = 11;
+                imageInit();
+                break;
+              case 1:
+                imageNumber = 12;
+                imageInit();
+                break;
+              case 2:
+                imageNumber = 13;
+                imageInit();
+                break;
+              case 3:
+                imageNumber = 14;
+                imageInit();
+                break;
+              case 4:
+                imageNumber = 15;
+                imageInit();
+                break;
+              case 5:
+                imageNumber = 16;
+                imageInit();
+                break;
+              case 6:
+                imageNumber = 17;
+                imageInit();
+                break;
+              case 7:
+                imageNumber = 18;
+                imageInit();
+                break;
+              case 8:
+                imageNumber = 19;
+                imageInit();
+                break;
+              case 9:
+                imageNumber = 20;
+                imageInit();
+                break;
+              case 10:
+                imageNumber = 21;
+                imageInit();
+                break;
+              case 11:
+                imageNumber = 22;
+                imageInit();
+                break;
+              case 12:
+                imageNumber = 23;
+                imageInit();
+                break;
+              case 13:
+                imageNumber = 24;
+                imageInit();
+                break;
+              case 14:
+                imageNumber = 25;
+                imageInit();
+                break;
+              case 15:
+                imageNumber = 26;
+                imageInit();
+                break;
+            }//end nested switch for button1 = 2
             autoCycle = !autoCycle;
             break;
           }
         }
-        button = 0; //reset button press to 0
+        button1 = 0; //reset button press to 0
+        button2 = 0;
       }
     }
     strip.show(); // Refresh LEDs
