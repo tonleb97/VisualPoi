@@ -22,6 +22,20 @@ BLEClientBas  clientBas;  // battery client
 BLEClientDis  clientDis;  // device information client
 BLEClientUart clientUart; // bleuart client
 
+const int dimmer = 10;
+const int brighter = 6;
+const int lastImg = 11;
+const int nextImg = 9;
+const int pres5 = 12;
+const int pres10 = A2;
+const int pres16 = 13;
+const int pres25 = A1;
+
+int flag = 0;
+
+long lastDebounceTime = 0;
+long debounceDelay = 200;
+
 void setup()
 {
   Serial.begin(115200);
@@ -64,6 +78,16 @@ void setup()
   Bluefruit.Scanner.setInterval(160, 80); // in unit of 0.625 ms
   Bluefruit.Scanner.useActiveScan(false);
   Bluefruit.Scanner.start(0);                   // // 0 = Don't stop scanning after n seconds
+
+  pinMode(dimmer, INPUT);
+  pinMode(brighter, INPUT);
+  pinMode(lastImg, INPUT);
+  pinMode(nextImg, INPUT);
+  pinMode(pres5, INPUT);
+  pinMode(pres10, INPUT);
+  pinMode(pres16, INPUT);
+  pinMode(pres25, INPUT);
+
 }
 
 /**
@@ -191,115 +215,40 @@ void loop()
     if ( clientUart.discovered() )
     {
       // Discovered means in working state
-      // Get Serial input and send to Peripheral
-      if ( Serial.available() )
-      {
-        delay(2); // delay a bit for all characters to arrive
-        
-        char str[20+1] = { 0 };
-        int intstr = 0;
-        char sendstr[4+1] = {0};
-        Serial.readBytes(str, 20);
-        intstr = atoi(str);
-        Serial.println(intstr);
-        switch(intstr){
-        case 0:
-          strcpy(sendstr, "!B10");
-          break;
-        case 1:
-          strcpy(sendstr, "!B11");
-          break;
-        case 2:
+      char sendstr[4+1] = {0};
+      if((millis() - lastDebounceTime) > debounceDelay){
+        if(digitalRead(dimmer) == HIGH){
           strcpy(sendstr, "!B12");
-          break;
-        case 3:
-          strcpy(sendstr, "!B13");
-          break;
-        case 4:
+          flag = 1;
+        }else if(digitalRead(brighter) == HIGH){
+          strcpy(sendstr, "!B11");
+          flag = 1;
+        }else if(digitalRead(lastImg) == HIGH){
           strcpy(sendstr, "!B14");
-          break;
-        case 5:
-          strcpy(sendstr, "!B15");
-          break;
-        case 6:
-          strcpy(sendstr, "!B16");
-          break;
-        case 7:
-          strcpy(sendstr, "!B17");
-          break;
-        case 8:
-          strcpy(sendstr, "!B18");
-          break;
-        case 9:
-          strcpy(sendstr, "!B19");
-          break;
-        case 10:
-          strcpy(sendstr, "!B1A");
-          break;
-        case 11:
-          strcpy(sendstr, "!B1B");
-          break;
-        case 12:
-          strcpy(sendstr, "!B1C");
-          break;
-        case 13:
-          strcpy(sendstr, "!B1D");
-          break;
-        case 14:
-         strcpy(sendstr, "!B1E");
-         break;
-        case 15:
-          strcpy(sendstr, "!B1F");
-          break;
-        case 16:
-          strcpy(sendstr, "!B20");
-          break;
-        case 17:
-          strcpy(sendstr, "!B21");
-          break;
-        case 18:
-          strcpy(sendstr, "!B22");
-        case 19:
-          strcpy(sendstr, "!B23");
-        case 20:
-          strcpy(sendstr, "!B24");
-          break;
-        case 21:
+          flag = 1;
+        }else if(digitalRead(nextImg) == HIGH){
+          strcpy(sendstr, "!B13");
+          flag = 1;
+        }else if(digitalRead(pres5) == HIGH){
           strcpy(sendstr, "!B25");
-          break;
-        case 22:
-          strcpy(sendstr, "!B26");
-          break;
-        case 23:
-          strcpy(sendstr, "!B27");
-          break;
-        case 24:
-          strcpy(sendstr, "!B28");
-          break;
-        case 25:
-          strcpy(sendstr, "!B29");
-          break;
-        case 26:
-          strcpy(sendstr, "!B2A");
-          break;
-        case 27:
-          strcpy(sendstr, "!B2B");
-          break;
-        case 28:
-          strcpy(sendstr, "!B2C");
-          break;
-        case 29:
-          strcpy(sendstr, "!B2D");
-          break;
-        case 30:
-          strcpy(sendstr, "!B2E");
-          break;
-        case 31:
-          strcpy(sendstr, "!B2F");
-          break;
+          flag = 1;
+        }else if(digitalRead(pres10) == HIGH){
+          strcpy(sendstr, "!B15");
+          flag = 1;
+        }else if(digitalRead(pres16) == HIGH){
+          strcpy(sendstr, "!B16");
+          flag = 1;
+        }else if(digitalRead(pres25) == HIGH){
+          strcpy(sendstr, "!B17");
+          flag = 1;
+        }//end button poll
+        if(flag == 1){
+          clientUart.print( sendstr );
+          Serial.println(sendstr);
         }
-        clientUart.print( sendstr );
-      }
+        flag = 0;
+        lastDebounceTime = millis();
+      }//close button debounce if
     }
   }
 }

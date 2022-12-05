@@ -64,7 +64,7 @@ typedef uint16_t line_t;
 #define BATT_MIN_MV 3350 // Some headroom over battery cutoff near 2.9V
 #define BATT_MAX_MV 4000 // And little below fresh-charged battery near 4.1V
 
-boolean autoCycle = true; // Set to true to cycle images by default
+boolean autoCycle = false; // Set to true to cycle images by default
 uint32_t CYCLE_TIME = 12; // Time, in seconds, between auto-cycle images
 
 #define VBATPIN A6
@@ -327,15 +327,15 @@ void loop() {
                 prevImage();
                 break;
               case 5:
-                imageNumber = 0;
+                imageNumber = 30;
                 imageInit();
                 break;
               case 6:
-                imageNumber = 1;
+                imageNumber = 41;
                 imageInit();
                 break;
               case 7:
-                imageNumber = 2;
+                imageNumber = 50;
                 imageInit();
                 break;
               case 8:
@@ -439,7 +439,6 @@ void loop() {
                 imageInit();
                 break;
             }//end nested switch for button1 = 2
-            autoCycle = !autoCycle;
             break;
           }
         }
