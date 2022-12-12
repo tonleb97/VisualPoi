@@ -6,3 +6,4 @@ Huge thanks to Adafruit provided code for [original LED poi project](https://lea
 
 Poi use DotStar LED strips for persistence of vision display. Remote control and Poi are both Adafruit Feather nRF52840 Express
 
+Be sure to read the Final Project Report for context and additional information.
