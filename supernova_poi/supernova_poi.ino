@@ -314,11 +314,11 @@ void loop() {
                 break;
               case 1:
                 if(bLevel < (sizeof(brightness) - 1))
-                strip.setBrightness(brightness[++bLevel]);
+                strip.setBrightness(brightness[++bLevel]); // Increases brightness
                 break;
               case 2:
                 if(bLevel)
-                  strip.setBrightness(brightness[--bLevel]);
+                  strip.setBrightness(brightness[--bLevel]); // Decreases brightness
                 break;
               case 3:
                 nextImage();
